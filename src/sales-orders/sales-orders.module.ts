@@ -7,11 +7,23 @@ import { SalesOrderCommand } from './cli/sales-order.command.js';
 import { SalesOrderCreateCommand } from './cli/sales-order-create.command.js';
 import { SalesOrderListCommand } from './cli/sales-order-list.command.js';
 import { SalesOrderHistoryCommand } from './cli/sales-order-history.command.js';
+import { SalesOrderShowCommand } from './cli/sales-order-show.command.js';
+import { SalesOrderUpdateItemCommand } from './cli/sales-order-update-item.command.js';
+import { SalesOrderRemoveItemCommand } from './cli/sales-order-remove-item.command.js';
 
 @Module({
   imports: [CustomersModule, ProductsModule],
   controllers: [SalesOrdersController],
-  providers: [SalesOrdersService, SalesOrderCommand, SalesOrderCreateCommand, SalesOrderListCommand, SalesOrderHistoryCommand],
+  providers: [
+    SalesOrdersService,
+    SalesOrderCommand,
+    SalesOrderCreateCommand,
+    SalesOrderListCommand,
+    SalesOrderHistoryCommand,
+    SalesOrderShowCommand,
+    SalesOrderUpdateItemCommand,
+    SalesOrderRemoveItemCommand,
+  ],
   exports: [SalesOrdersService],
 })
 export class SalesOrdersModule {}

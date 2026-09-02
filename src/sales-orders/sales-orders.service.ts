@@ -1,9 +1,12 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { CreateSalesOrderDto } from './dto/create-sales-order.dto.js';
 import { UpdateSalesOrderStatusDto } from './dto/update-sales-order-status.dto.js';
+import { UpdateSalesOrderItemDto } from './dto/update-sales-order-item.dto.js';
+import type { SalesOrderStatus } from '../generated/prisma/enums.js';
 
 const ORDER_INCLUDE = { customer: true, items: { include: { product: true } } };
+const IMMUTABLE_STATUSES: SalesOrderStatus[] = ['COMPLETED', 'CANCELLED'];
 
 @Injectable()
 export class SalesOrdersService {
@@ -45,5 +48,35 @@ export class SalesOrdersService {
   async updateStatus(id: string, dto: UpdateSalesOrderStatusDto) {
     await this.findOne(id);
     return this.prisma.salesOrder.update({ where: { id }, data: { status: dto.status }, include: ORDER_INCLUDE });
+  }
+
+  async updateItem(orderId: string, itemId: string, dto: UpdateSalesOrderItemDto) {
+    const order = await this.findOne(orderId);
+    this.assertMutable(order.status);
+    if (!order.items.some((item) => item.id === itemId)) {
+      throw new NotFoundException(`Satış siparişi kalemi ${itemId} bulunamadı`);
+    }
+    await this.prisma.salesOrderItem.update({ where: { id: itemId }, data: dto });
+    return this.findOne(orderId);
+  }
+
+  async removeItem(orderId: string, itemId: string) {
+    const order = await this.findOne(orderId);
+    this.assertMutable(order.status);
+    if (!order.items.some((item) => item.id === itemId)) {
+      throw new NotFoundException(`Satış siparişi kalemi ${itemId} bulunamadı`);
+    }
+    if (order.items.length === 1) {
+      throw new BadRequestException('Siparişin son kalemi silinemez; bunun yerine siparişi iptal edin');
+    }
+    await this.prisma.salesOrderItem.delete({ where: { id: itemId } });
+    return this.findOne(orderId);
+  }
+
+  // Tamamlanmış/iptal edilmiş siparişler değiştirilemez — kalemler yalnızca PENDING/CONFIRMED durumunda güncellenebilir
+  private assertMutable(status: SalesOrderStatus) {
+    if (IMMUTABLE_STATUSES.includes(status)) {
+      throw new BadRequestException(`Sipariş ${status} durumundayken kalemleri değiştirilemez`);
+    }
   }
 }
