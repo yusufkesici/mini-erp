@@ -34,6 +34,12 @@ enum ProductionOrderStatus {
   CANCELLED // İptal edildi
 }
 
+/// Muhasebe kaydı tipi — gelir mi gider mi
+enum AccountingEntryType {
+  INCOME // Gelir
+  EXPENSE // Gider
+}
+
 /// Stok hareketi tipi — yön (giriş/çıkış) ve neden tek alanda birleşik
 enum StockMovementType {
   PURCHASE_IN // Satın alma girişi
@@ -141,7 +147,7 @@ model BillOfMaterialItem {
   bom   BillOfMaterial @relation(fields: [bomId], references: [id], onDelete: Cascade)
 
   componentProductId String // bileşen ürün
-  component           Product @relation(fields: [componentProductId], references: [id], onDelete: Restrict)
+  component          Product @relation(fields: [componentProductId], references: [id], onDelete: Restrict)
 
   quantity Decimal @db.Decimal(18, 4) // outputQuantity başına gereken miktar
 
@@ -206,4 +212,21 @@ model StockMovement {
   @@index([productId, warehouseId])
   @@index([productionOrderId])
   @@map("stock_movements")
+}
+
+/// Muhasebe kaydı — değiştirilemez gelir/gider defteri; StockMovement gibi append-only
+model AccountingEntry {
+  id String @id @default(cuid())
+
+  type        AccountingEntryType
+  amount      Decimal             @db.Decimal(12, 2) // her zaman pozitif; yön `type` alanından gelir
+  category    String? // örn. "Satış", "Kira", "Maaş"
+  description String?
+  entryDate   DateTime            @default(now()) // kaydın ait olduğu tarih (kayıt tarihinden farklı olabilir)
+
+  createdAt DateTime @default(now()) // yalnızca createdAt — kayıt değiştirilmez, updatedAt yok
+
+  @@index([type])
+  @@index([entryDate])
+  @@map("accounting_entries")
 }
