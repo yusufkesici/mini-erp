@@ -40,6 +40,14 @@ enum AccountingEntryType {
   EXPENSE // Gider
 }
 
+/// Satış siparişi durumu
+enum SalesOrderStatus {
+  PENDING // Beklemede
+  CONFIRMED // Onaylandı
+  COMPLETED // Tamamlandı
+  CANCELLED // İptal edildi
+}
+
 /// Stok hareketi tipi — yön (giriş/çıkış) ve neden tek alanda birleşik
 enum StockMovementType {
   PURCHASE_IN // Satın alma girişi
@@ -74,6 +82,7 @@ model Product {
   bomComponentOf   BillOfMaterialItem[] // bu ürünün bileşen olarak kullanıldığı BOM satırları
   productionOrders ProductionOrder[] // bu ürünün üretildiği üretim emirleri
   stockMovements   StockMovement[] // bu ürüne ait stok hareketleri
+  salesOrderItems  SalesOrderItem[] // bu ürünün sipariş edildiği satış siparişi satırları
 
   @@index([type])
   @@index([isActive])
@@ -229,4 +238,66 @@ model AccountingEntry {
   @@index([type])
   @@index([entryDate])
   @@map("accounting_entries")
+}
+
+/// Müşteri — temel iletişim bilgileri; sipariş geçmişi SalesOrder üzerinden ilişkilidir
+model Customer {
+  id      String  @id @default(cuid())
+  code    String  @unique // Müşteri kodu
+  name    String
+  email   String?
+  phone   String?
+  address String?
+
+  isActive  Boolean   @default(true)
+  deletedAt DateTime? // soft delete
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  salesOrders SalesOrder[] // bu müşterinin sipariş geçmişi
+
+  @@index([isActive])
+  @@map("customers")
+}
+
+/// Satış siparişi başlığı — bir müşterinin sipariş geçmişindeki tek bir sipariş
+model SalesOrder {
+  id String @id @default(cuid())
+
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Restrict)
+
+  orderDate DateTime         @default(now())
+  status    SalesOrderStatus @default(PENDING)
+  note      String?
+
+  items SalesOrderItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([customerId])
+  @@index([status])
+  @@map("sales_orders")
+}
+
+/// Satış siparişi satırı — bir SalesOrder'ın kalemlerinden biri
+model SalesOrderItem {
+  id String @id @default(cuid())
+
+  orderId String
+  order   SalesOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  quantity  Decimal @db.Decimal(18, 4)
+  unitPrice Decimal @db.Decimal(12, 2)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([orderId, productId])
+  @@map("sales_order_items")
 }

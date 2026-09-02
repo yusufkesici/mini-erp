@@ -9,6 +9,8 @@ import { BillOfMaterialsModule } from './bill-of-materials/bill-of-materials.mod
 import { ProductionOrdersModule } from './production-orders/production-orders.module.js';
 import { StockMovementsModule } from './stock-movements/stock-movements.module.js';
 import { AccountingModule } from './accounting/accounting.module.js';
+import { CustomersModule } from './customers/customers.module.js';
+import { SalesOrdersModule } from './sales-orders/sales-orders.module.js';
 
 @Module({
   imports: [
@@ -20,6 +22,8 @@ import { AccountingModule } from './accounting/accounting.module.js';
     ProductionOrdersModule,
     StockMovementsModule,
     AccountingModule,
+    CustomersModule,
+    SalesOrdersModule,
   ],
   controllers: [AppController],
   providers: [AppService],
