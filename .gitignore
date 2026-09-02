@@ -1,0 +1,32 @@
+# compiled output
+/dist
+/node_modules
+*.tsbuildinfo
+
+# yerel Claude Code oturum durumu
+/.claude
+
+# generated prisma client (regenerate with `npx prisma generate`)
+/src/generated
+
+# logs
+*.log
+npm-debug.log*
+
+# env
+.env
+.env.local
+
+# tests
+/coverage
+
+# IDE
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.idea
+
+# OS
+.DS_Store
