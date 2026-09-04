@@ -8,6 +8,15 @@ import type { SalesOrderStatus } from '../generated/prisma/enums.js';
 const ORDER_INCLUDE = { customer: true, items: { include: { product: true } } };
 const IMMUTABLE_STATUSES: SalesOrderStatus[] = ['COMPLETED', 'CANCELLED'];
 
+// Durum makinesi: PENDING -> CONFIRMED -> COMPLETED, ikisinden de CANCELLED'a geçilebilir.
+// COMPLETED/CANCELLED nihai durumlardır, buradan başka bir duruma geçiş yok.
+const ALLOWED_STATUS_TRANSITIONS: Record<SalesOrderStatus, SalesOrderStatus[]> = {
+  PENDING: ['CONFIRMED', 'CANCELLED'],
+  CONFIRMED: ['COMPLETED', 'CANCELLED'],
+  COMPLETED: [],
+  CANCELLED: [],
+};
+
 @Injectable()
 export class SalesOrdersService {
   constructor(private readonly prisma: PrismaService) {}
@@ -46,7 +55,10 @@ export class SalesOrdersService {
   }
 
   async updateStatus(id: string, dto: UpdateSalesOrderStatusDto) {
-    await this.findOne(id);
+    const order = await this.findOne(id);
+    if (!ALLOWED_STATUS_TRANSITIONS[order.status].includes(dto.status)) {
+      throw new BadRequestException(`Sipariş ${order.status} durumundayken ${dto.status} durumuna geçirilemez`);
+    }
     return this.prisma.salesOrder.update({ where: { id }, data: { status: dto.status }, include: ORDER_INCLUDE });
   }
 

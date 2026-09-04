@@ -1,21 +1,43 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { StockMovementsService } from '../stock-movements/stock-movements.service.js';
 import { CreateStockDto } from './dto/create-stock.dto.js';
 import { UpdateStockDto } from './dto/update-stock.dto.js';
 
 @Injectable()
 export class StockService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly stockMovementsService: StockMovementsService,
+  ) {}
 
-  create(dto: CreateStockDto) {
-    return this.prisma.stock.create({
-      data: {
-        product: { connect: { id: dto.productId } },
-        warehouse: { connect: { id: dto.warehouseId } },
-        quantity: dto.quantity,
-        minStockLevel: dto.minStockLevel,
-      },
+  // Sıfırdan büyük bir başlangıç miktarı, StockMovementsService üzerinden ADJUSTMENT_IN
+  // hareketi olarak işlenir — Stock.quantity, StockMovement ledger'ından bağımsız bir
+  // değerle asla oluşturulmaz (bkz. StockMovementsService.create'in Stock upsert'i).
+  async create(dto: CreateStockDto) {
+    const quantity = dto.quantity ?? 0;
+    if (quantity === 0) {
+      return this.prisma.stock.create({
+        data: {
+          product: { connect: { id: dto.productId } },
+          warehouse: { connect: { id: dto.warehouseId } },
+          minStockLevel: dto.minStockLevel,
+        },
+      });
+    }
+
+    await this.stockMovementsService.create({
+      productId: dto.productId,
+      warehouseId: dto.warehouseId,
+      type: 'ADJUSTMENT_IN',
+      quantity,
+      note: 'Başlangıç stok kaydı',
     });
+    const where = { productId_warehouseId: { productId: dto.productId, warehouseId: dto.warehouseId } };
+    if (dto.minStockLevel !== undefined) {
+      return this.prisma.stock.update({ where, data: { minStockLevel: dto.minStockLevel } });
+    }
+    return this.prisma.stock.findUniqueOrThrow({ where });
   }
 
   findAll() {

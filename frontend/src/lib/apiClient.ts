@@ -1,4 +1,5 @@
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000';
+const API_KEY_STORAGE_KEY = 'mini-erp-api-key';
 
 export class ApiError extends Error {
   statusCode: number;
@@ -11,11 +12,39 @@ export class ApiError extends Error {
   }
 }
 
+export function getApiKey(): string | null {
+  return localStorage.getItem(API_KEY_STORAGE_KEY);
+}
+
+export function setApiKey(key: string): void {
+  localStorage.setItem(API_KEY_STORAGE_KEY, key);
+}
+
+export function clearApiKey(): void {
+  localStorage.removeItem(API_KEY_STORAGE_KEY);
+}
+
+// 401 aldığımızda (geçersiz/eksik anahtar) ApiKeyGate'in yeniden anahtar istemesi için kayıtlı callback
+let onUnauthorized: (() => void) | null = null;
+export function registerUnauthorizedHandler(handler: () => void): void {
+  onUnauthorized = handler;
+}
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const apiKey = getApiKey();
   const res = await fetch(`${BASE_URL}${path}`, {
     ...options,
-    headers: { 'Content-Type': 'application/json', ...options.headers },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(apiKey ? { 'x-api-key': apiKey } : {}),
+      ...options.headers,
+    },
   });
+
+  if (res.status === 401) {
+    clearApiKey();
+    onUnauthorized?.();
+  }
 
   if (!res.ok) {
     let messages: string[] = [`İstek başarısız oldu (HTTP ${res.status})`];

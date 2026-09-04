@@ -1,7 +1,7 @@
 import { CommandRunner, Option, SubCommand } from 'nest-commander';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
-import { NotFoundException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { BillOfMaterialsService } from '../bill-of-materials.service.js';
 import { CreateBomDto } from '../dto/create-bom.dto.js';
 import { ProductsService } from '../../products/products.service.js';
@@ -38,13 +38,13 @@ export class BomCreateCommand extends CommandRunner {
         // "KOD:MIKTAR" biçimini ayrıştır
         const [code, qtyRaw] = entry.split(':');
         if (!code || !qtyRaw) {
-          throw new Error(`Geçersiz --component değeri: "${entry}" (beklenen biçim: KOD:MIKTAR)`);
+          throw new BadRequestException(`Geçersiz --component değeri: "${entry}" (beklenen biçim: KOD:MIKTAR)`);
         }
         const component = await this.productsService.findByCode(code);
         items.push({ componentProductId: component.id, quantity: Number(qtyRaw) });
       }
     } catch (error) {
-      if (error instanceof NotFoundException || error instanceof Error) {
+      if (error instanceof NotFoundException || error instanceof BadRequestException) {
         console.error(error.message);
         process.exitCode = 1;
         return;

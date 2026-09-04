@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
@@ -19,8 +20,13 @@ describe('AppController (e2e)', () => {
   it('/ (GET)', () => {
     return request(app.getHttpServer())
       .get('/')
+      .set('x-api-key', process.env.API_KEY as string)
       .expect(200)
       .expect('Hello World!');
+  });
+
+  it('/ (GET) — API anahtarı olmadan reddedilir', () => {
+    return request(app.getHttpServer()).get('/').expect(401);
   });
 
   afterEach(async () => {

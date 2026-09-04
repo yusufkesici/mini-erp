@@ -21,6 +21,5 @@ export interface CreateStockInput {
 }
 
 export interface UpdateStockInput {
-  quantity?: number;
   minStockLevel?: number;
 }

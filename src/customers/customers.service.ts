@@ -24,7 +24,7 @@ export class CustomersService {
   }
 
   async findByCode(code: string) {
-    const customer = await this.prisma.customer.findUnique({ where: { code } });
+    const customer = await this.prisma.customer.findFirst({ where: { code, deletedAt: null } });
     if (!customer) {
       throw new NotFoundException(`Müşteri kodu ${code} bulunamadı`);
     }

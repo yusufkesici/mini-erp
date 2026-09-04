@@ -6,7 +6,7 @@ import { stockApi } from '../../api/stock';
 import { ProductSelect } from '../../components/common/ProductSelect';
 import { WarehouseSelect } from '../../components/common/WarehouseSelect';
 import { ApiError } from '../../lib/apiClient';
-import { parseDecimal } from '../../lib/decimal';
+import { formatQty, parseDecimal } from '../../lib/decimal';
 import type { CreateStockInput } from '../../types/stock';
 
 export default function StockAdjustForm() {
@@ -28,7 +28,6 @@ export default function StockAdjustForm() {
     form.setFieldsValue({
       productId: data.productId,
       warehouseId: data.warehouseId,
-      quantity: parseDecimal(data.quantity),
       minStockLevel: data.minStockLevel ? parseDecimal(data.minStockLevel) : undefined,
     });
   }, [data, form]);
@@ -36,7 +35,7 @@ export default function StockAdjustForm() {
   const mutation = useMutation({
     mutationFn: (values: CreateStockInput) =>
       isEdit
-        ? stockApi.update(id as string, { quantity: values.quantity, minStockLevel: values.minStockLevel })
+        ? stockApi.update(id as string, { minStockLevel: values.minStockLevel })
         : stockApi.create(values),
     onSuccess: () => {
       message.success(isEdit ? 'Stok kaydı güncellendi.' : 'Stok kaydı oluşturuldu.');
@@ -56,6 +55,7 @@ export default function StockAdjustForm() {
           <Descriptions.Item label="Depo">
             {data.warehouse.code} — {data.warehouse.name}
           </Descriptions.Item>
+          <Descriptions.Item label="Mevcut Miktar">{formatQty(data.quantity)}</Descriptions.Item>
         </Descriptions>
       )}
       <Form form={form} layout="vertical" onFinish={(values: CreateStockInput) => mutation.mutate(values)}>
@@ -69,9 +69,11 @@ export default function StockAdjustForm() {
             </Form.Item>
           </>
         )}
-        <Form.Item name="quantity" label="Miktar">
-          <InputNumber min={0} style={{ width: '100%' }} />
-        </Form.Item>
+        {!isEdit && (
+          <Form.Item name="quantity" label="Başlangıç Miktarı">
+            <InputNumber min={0} style={{ width: '100%' }} />
+          </Form.Item>
+        )}
         <Form.Item name="minStockLevel" label="Minimum Stok Seviyesi">
           <InputNumber min={0} style={{ width: '100%' }} />
         </Form.Item>

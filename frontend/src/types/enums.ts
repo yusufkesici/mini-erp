@@ -60,6 +60,14 @@ export const SALES_ORDER_STATUS_COLORS: Record<SalesOrderStatus, string> = {
 };
 export const SALES_ORDER_ITEMS_EDITABLE: SalesOrderStatus[] = ['PENDING', 'CONFIRMED'];
 
+// Backend'deki durum makinesiyle birebir eşleşir (bkz. sales-orders.service.ts ALLOWED_STATUS_TRANSITIONS)
+export const SALES_ORDER_STATUS_TRANSITIONS: Record<SalesOrderStatus, SalesOrderStatus[]> = {
+  PENDING: ['CONFIRMED', 'CANCELLED'],
+  CONFIRMED: ['COMPLETED', 'CANCELLED'],
+  COMPLETED: [],
+  CANCELLED: [],
+};
+
 export type StockMovementType =
   | 'PURCHASE_IN'
   | 'SALES_OUT'

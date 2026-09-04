@@ -10,7 +10,7 @@ import {
   SALES_ORDER_ITEMS_EDITABLE,
   SALES_ORDER_STATUS_COLORS,
   SALES_ORDER_STATUS_LABELS,
-  SALES_ORDER_STATUS_OPTIONS,
+  SALES_ORDER_STATUS_TRANSITIONS,
 } from '../../types/enums';
 import type { SalesOrderStatus } from '../../types/enums';
 import type { SalesOrderItem } from '../../types/salesOrder';
@@ -78,6 +78,7 @@ export default function SalesOrderDetail() {
   }
 
   const editable = SALES_ORDER_ITEMS_EDITABLE.includes(data.status);
+  const nextStatuses = SALES_ORDER_STATUS_TRANSITIONS[data.status];
   const total = data.items.reduce((sum, item) => sum + parseDecimal(item.quantity) * parseDecimal(item.unitPrice), 0);
 
   return (
@@ -99,15 +100,17 @@ export default function SalesOrderDetail() {
             <StatusTag label={SALES_ORDER_STATUS_LABELS[data.status]} color={SALES_ORDER_STATUS_COLORS[data.status]} />
           </Descriptions.Item>
         </Descriptions>
-        <Space style={{ marginTop: 16 }}>
-          <Select<SalesOrderStatus>
-            style={{ width: 200 }}
-            value={data.status}
-            options={SALES_ORDER_STATUS_OPTIONS}
-            loading={statusMutation.isPending}
-            onChange={(status) => statusMutation.mutate(status)}
-          />
-        </Space>
+        {nextStatuses.length > 0 && (
+          <Space style={{ marginTop: 16 }}>
+            <Select<SalesOrderStatus>
+              style={{ width: 200 }}
+              placeholder="Durumu değiştir"
+              options={nextStatuses.map((status) => ({ value: status, label: SALES_ORDER_STATUS_LABELS[status] }))}
+              loading={statusMutation.isPending}
+              onChange={(status) => statusMutation.mutate(status)}
+            />
+          </Space>
+        )}
       </Card>
 
       <Card

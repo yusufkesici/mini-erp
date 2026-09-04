@@ -4,6 +4,10 @@ import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module.js';
 
 async function bootstrap() {
+  if (!process.env.API_KEY) {
+    throw new Error('API_KEY ortam değişkeni tanımlı değil (.env dosyasına bakın)');
+  }
+
   const app = await NestFactory.create(AppModule);
   app.enableCors({ origin: process.env.CORS_ORIGIN ?? 'http://localhost:5173' });
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
