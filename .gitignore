@@ -8,8 +8,10 @@
 /frontend/dist
 /frontend/.env
 
-# yerel Claude Code oturum durumu
-/.claude
+# Claude Code: agent/skill/hook tanımları takip ediliyor ve paylaşılıyor; yalnızca
+# kişisel/oturuma özel dosyalar hariç tutuluyor.
+.claude/settings.local.json
+.claude/scheduled_tasks.lock
 
 # generated prisma client (regenerate with `npx prisma generate`)
 /src/generated
