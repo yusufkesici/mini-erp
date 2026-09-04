@@ -5,11 +5,12 @@ import { ProductsModule } from '../products/products.module.js';
 import { BomCommand } from './cli/bom.command.js';
 import { BomCreateCommand } from './cli/bom-create.command.js';
 import { BomListCommand } from './cli/bom-list.command.js';
+import { BomTreeCommand } from './cli/bom-tree.command.js';
 
 @Module({
   imports: [ProductsModule],
   controllers: [BillOfMaterialsController],
-  providers: [BillOfMaterialsService, BomCommand, BomCreateCommand, BomListCommand],
+  providers: [BillOfMaterialsService, BomCommand, BomCreateCommand, BomListCommand, BomTreeCommand],
   exports: [BillOfMaterialsService],
 })
 export class BillOfMaterialsModule {}

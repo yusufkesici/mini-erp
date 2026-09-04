@@ -22,6 +22,11 @@ export class BillOfMaterialsController {
     return this.billOfMaterialsService.findOne(id);
   }
 
+  @Get('tree/:productId')
+  getTree(@Param('productId') productId: string) {
+    return this.billOfMaterialsService.getTree(productId);
+  }
+
   @Patch(':id')
   update(@Param('id') id: string, @Body() dto: UpdateBomDto) {
     return this.billOfMaterialsService.update(id, dto);
