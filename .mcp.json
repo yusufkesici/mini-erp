@@ -1,0 +1,24 @@
+{
+  "_documentation": {
+    "_readme": "Bu proje kapsamında (proje-scope) tanımlı tek MCP sunucusu mini-erp-db'dir. github, context7, claude-in-chrome gibi diğer MCP sunucuları kullanıcının global Claude Code ayarlarında (~/.claude) tanımlıdır; kişisel erişim bilgileri (ör. GitHub token) içerebileceğinden repoya eklenmemiştir ve makineden makineye değişebilir.",
+    "mini-erp-db": {
+      "purpose": "mini-erp Postgres veritabanına salt-okunur, şema-odaklı erişim sağlar (stdio transport, mcp-server/index.js).",
+      "connection": "Proje kökündeki .env dosyasındaki DATABASE_URL üzerinden bağlanır — ayrı bir credential gerekmez, ana uygulamayla aynı bağlantıyı paylaşır.",
+      "tools": {
+        "list_tables": "public şemadaki tüm tabloları listeler",
+        "describe_table(table)": "bir tablonun kolonlarını, tiplerini, PK/FK ilişkilerini döner",
+        "schema_summary": "tüm şemanın (her tablo için kolon + FK) özetini tek metin halinde döner",
+        "row_count(table)": "bir tablodaki satır sayısını döner"
+      },
+      "security_note": "Tablo adları önce information_schema'ya karşı doğrulanır (assertTableExists), bu yüzden row_count'taki identifier enjeksiyonu engellenmiştir. Sunucu yalnızca SELECT sorguları çalıştırır."
+    }
+  },
+  "mcpServers": {
+    "mini-erp-db": {
+      "command": "node",
+      "args": [
+        "mcp-server/index.js"
+      ]
+    }
+  }
+}
