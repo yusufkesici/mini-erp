@@ -34,7 +34,6 @@ export interface CreateProductionOrderInput {
 }
 
 export interface UpdateProductionOrderInput {
-  status?: ProductionOrderStatus;
   producedQuantity?: number;
   plannedStartDate?: string;
   plannedEndDate?: string;

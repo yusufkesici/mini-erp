@@ -5,10 +5,13 @@ import ProductList from './pages/products/ProductList';
 import ProductForm from './pages/products/ProductForm';
 import WarehouseList from './pages/warehouses/WarehouseList';
 import WarehouseForm from './pages/warehouses/WarehouseForm';
+import LocationList from './pages/locations/LocationList';
+import LocationForm from './pages/locations/LocationForm';
 import StockList from './pages/stock/StockList';
 import StockAdjustForm from './pages/stock/StockAdjustForm';
 import StockMovementList from './pages/stockMovements/StockMovementList';
 import StockMovementForm from './pages/stockMovements/StockMovementForm';
+import WarehouseScanPage from './pages/warehouseScan/WarehouseScanPage';
 import BomList from './pages/bom/BomList';
 import BomForm from './pages/bom/BomForm';
 import BomDetail from './pages/bom/BomDetail';
@@ -36,11 +39,15 @@ export const router = createBrowserRouter([
       { path: 'warehouses', Component: WarehouseList },
       { path: 'warehouses/new', Component: WarehouseForm },
       { path: 'warehouses/:id/edit', Component: WarehouseForm },
+      { path: 'locations', Component: LocationList },
+      { path: 'locations/new', Component: LocationForm },
+      { path: 'locations/:id/edit', Component: LocationForm },
       { path: 'stock', Component: StockList },
       { path: 'stock/new', Component: StockAdjustForm },
       { path: 'stock/:id/edit', Component: StockAdjustForm },
       { path: 'stock-movements', Component: StockMovementList },
       { path: 'stock-movements/new', Component: StockMovementForm },
+      { path: 'warehouse-scan', Component: WarehouseScanPage },
       { path: 'bom', Component: BomList },
       { path: 'bom/new', Component: BomForm },
       { path: 'bom/:id', Component: BomDetail },

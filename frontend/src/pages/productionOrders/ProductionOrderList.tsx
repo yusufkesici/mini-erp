@@ -13,7 +13,7 @@ export default function ProductionOrderList() {
 
   return (
     <div>
-      <Space style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
+      <Space style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }} wrap>
         <Typography.Title level={3} style={{ margin: 0 }}>
           Üretim Emirleri
         </Typography.Title>
@@ -25,6 +25,7 @@ export default function ProductionOrderList() {
       </Space>
       <Table<ProductionOrder>
         rowKey="id"
+        scroll={{ x: 'max-content' }}
         loading={isLoading}
         dataSource={data}
         columns={[

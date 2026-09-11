@@ -1,11 +1,23 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+} from '@nestjs/common';
 import { BillOfMaterialsService } from './bill-of-materials.service.js';
 import { CreateBomDto } from './dto/create-bom.dto.js';
 import { UpdateBomDto } from './dto/update-bom.dto.js';
 
 @Controller('bill-of-materials')
 export class BillOfMaterialsController {
-  constructor(private readonly billOfMaterialsService: BillOfMaterialsService) {}
+  constructor(
+    private readonly billOfMaterialsService: BillOfMaterialsService,
+  ) {}
 
   @Post()
   create(@Body() dto: CreateBomDto) {
@@ -25,6 +37,20 @@ export class BillOfMaterialsController {
   @Get('tree/:productId')
   getTree(@Param('productId') productId: string) {
     return this.billOfMaterialsService.getTree(productId);
+  }
+
+  @Get('explode/:productId')
+  explode(
+    @Param('productId') productId: string,
+    @Query('quantity') quantity: string,
+  ) {
+    const parsed = Number(quantity);
+    if (!quantity || Number.isNaN(parsed)) {
+      throw new BadRequestException(
+        'quantity query parametresi sayısal ve zorunludur',
+      );
+    }
+    return this.billOfMaterialsService.explode(productId, parsed);
   }
 
   @Patch(':id')

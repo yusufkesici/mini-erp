@@ -17,7 +17,7 @@ export default function SalesOrderList() {
 
   return (
     <div>
-      <Space style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
+      <Space style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }} wrap>
         <Typography.Title level={3} style={{ margin: 0 }}>
           Satış Siparişleri
         </Typography.Title>
@@ -29,6 +29,7 @@ export default function SalesOrderList() {
       </Space>
       <Table<SalesOrder>
         rowKey="id"
+        scroll={{ x: 'max-content' }}
         loading={isLoading}
         dataSource={data}
         columns={[

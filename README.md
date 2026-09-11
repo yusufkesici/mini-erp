@@ -1,114 +1,93 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# mini-erp
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+Envanter (ürün/depo/stok/BOM/üretim emri), muhasebe ve CRM (müşteri/satış siparişi) modüllerini kapsayan, **REST HTTP API + terminal CLI** çift transport'lu bir NestJS + Prisma 7 + PostgreSQL uygulaması. HTTP Controller ve CLI Command'lar aynı Service katmanını çağıran ince adaptörlerdir — iş mantığı tek yerde yaşar.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+Mimari kararlar ve modüller arası ilişki diyagramları için **[ARCHITECTURE.md](./ARCHITECTURE.md)**'ye bakın.
 
-## Description
-
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
-
-## Project setup
+## Kurulum
 
 ```bash
-$ npm install
+npm install
+cp .env.example .env   # DATABASE_URL ve API_KEY'i doldurun
+docker compose up -d   # local Postgres (5432)
+npx prisma generate
+npx prisma migrate dev
 ```
 
-## Compile and run the project
+## Çalıştırma
 
 ```bash
-# development
-$ npm run start
+# HTTP API — http://localhost:3000
+npm run start:dev            # watch mode
+npm run build && npm run start:prod
 
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+# CLI — önce her zaman build gerekir (bkz. ARCHITECTURE.md §7)
+npm run build
+npm run cli -- product list
+npm run cli -- <komut> --help
 ```
 
-## Run tests
+## Test
 
 ```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+npm run test        # unit testler (**/*.spec.ts)
+npm run test:e2e     # e2e testler — gerçek Postgres bağlantısı gerektirir (docker compose up -d)
+npm run lint
 ```
 
-## Deployment
+## Modüller
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+Her modül `dto/` (validasyon), `controller` (HTTP), `service` (domain + Prisma erişimi) ve `cli/` (terminal komutları) alt klasörlerinden oluşur; HTTP ve CLI aynı Service'i çağırır.
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
-
+### Products (`src/products`)
+Ürün kartı CRUD'u — kod (SKU), barkod, tip (`RAW_MATERIAL` / `SEMI_FINISHED` / `FINISHED_GOOD`), birim, maliyet/satış fiyatı. Silme soft-delete'tir (`deletedAt` + `isActive`); listeleme/detay uçları silinmiş ürünleri filtreler.
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+npm run cli -- product create --code SKU-001 --name "Widget" --type RAW_MATERIAL --unit KG
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+### Warehouses (`src/warehouses`)
+Depo kartı CRUD'u. Silme hard-delete değildir, yalnızca `isActive: false` yapar (Products'tan farklı olarak `deletedAt` alanı yok — bkz. ARCHITECTURE.md'deki kasıtlı soft-delete tutarsızlığı notu).
+```bash
+npm run cli -- warehouse create --code DPO-1 --name "Ana Depo"
+```
 
-## Observability
+### Stock (`src/stock`)
+Ürün+depo başına anlık stok önbelleği (`@@unique([productId, warehouseId])`). Doğrudan CRUD uçları vardır, ama gerçek stok değişimleri normalde **Stock Movements** üzerinden yürütülmelidir — bu modül daha çok ilk stok tanımlama / düzeltme amaçlıdır.
+```bash
+npm run cli -- stock create --product-code SKU-001 --warehouse-code DPO-1 --quantity 50
+```
 
-In production applications, observability is essential for understanding how your system behaves, detecting issues early, and maintaining reliable performance.
+### Stock Movements (`src/stock-movements`)
+Değiştirilemez (append-only) stok hareket defteri — `PURCHASE_IN`, `SALES_OUT`, `PRODUCTION_IN`, `PRODUCTION_CONSUME_OUT`, `ADJUSTMENT_IN`, `ADJUSTMENT_OUT`. Her kayıt, ilgili `Stock` satırını aynı `Serializable` transaction içinde günceller; çıkış hareketlerinde stok negatife düşecekse istek reddedilir. Update/delete uç noktası yoktur.
+```bash
+npm run cli -- stock-movement create --product-code SKU-001 --warehouse-code DPO-1 --type PURCHASE_IN --quantity 100
+```
 
-[NestJS Observe](https://observe.nestjs.com) automatically instruments your NestJS application, giving you deep visibility into your system with minimal setup:
+### Bill of Materials / BOM (`src/bill-of-materials`)
+Ürün ağacı: `BillOfMaterial` (reçete başlığı) + `BillOfMaterialItem` (bileşen satırları). Bir ürünün kendi bileşeni olması (self-reference) ve dolaylı döngüler (circular reference) engellenir; bir üründe aynı anda tek aktif reçete garanti edilir. `GET /bill-of-materials/tree/:productId` iç içe BOM'ları (yarı mamul içinde yarı mamul) tek bir ağaç olarak döner.
+```bash
+npm run cli -- bom create --product-code SKU-002 --name "Reçete" --component SKU-001:2.5
+npm run cli -- bom tree --product-code SKU-002
+```
 
-- **Distributed tracing:** Follow requests across services and understand how they flow through your system.
-- **Waterfall analysis:** Visualize request execution and identify slow operations, bottlenecks, and unexpected delays.
-- **Performance analysis:** Analyze application performance in real time and quickly pinpoint areas that need optimization.
-- **Metrics:** Track key application and infrastructure metrics to understand system health and performance trends.
-- **Logging:** Centralize and correlate logs with traces and other telemetry to make debugging easier.
-- **Error tracking:** Detect errors quickly and investigate their root causes with the surrounding context.
-- **SLA monitoring:** Track service-level objectives and identify when your application is approaching or exceeding defined thresholds.
-- **Alarms and alerts:** Set up alerts for critical errors, performance degradation, SLA violations, and other anomalies so your team can react quickly.
+### Production Orders (`src/production-orders`)
+Bir BOM'a göre belirli miktarda ürün üretme talimatı. `bomId` verilmezse ürünün o an geçerli aktif reçetesi otomatik çözülür. Bu modül yalnızca **plan/durum** tutar (`PLANNED → IN_PROGRESS → COMPLETED`/`CANCELLED`) — bileşen tüketimi ve çıktı girişi, `productionOrderId` ile ilişkilendirilmiş ayrı **Stock Movements** kayıtlarıyla yapılır; üretim emri kendiliğinden stok hareketi üretmez.
+```bash
+npm run cli -- production-order create --product-code SKU-002 --warehouse-code DPO-1 --planned-quantity 10
+```
 
-## Resources
+### Accounting (`src/accounting`)
+Bağımsız, değiştirilemez gelir/gider defteri (`INCOME`/`EXPENSE`). Hiçbir başka modüle FK'sı yoktur — satış siparişi tamamlanınca otomatik gelir kaydı **oluşturulmaz**, kayıtlar elle açılır. `GET /accounting/summary` toplam gelir/gider/bakiyeyi döner.
 
-Check out a few resources that may come in handy when working with NestJS:
+### Customers (`src/customers`)
+Müşteri kartı CRUD'u — Products ile aynı şablon (kod, soft-delete).
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Auto-instrument your application with [NestJS Observer](https://observer.nestjs.com). Distributed tracing, metrics, and logging made easy. Error tracking and performance monitoring for your NestJS applications.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+### Sales Orders (`src/sales-orders`)
+Müşteri bazlı satış siparişi: başlık (`SalesOrder`) + ürün kalemleri (`SalesOrderItem`). Durum makinesi: `PENDING → CONFIRMED → COMPLETED`, ikisinden de `CANCELLED`'a geçilebilir; `COMPLETED`/`CANCELLED` nihai durumlardır ve kalemler bu durumlarda artık değiştirilemez.
 
-## Support
+### Auth (`src/auth`)
+Ayrı bir modülü yok — `ApiKeyGuard`, `app.module.ts`'te `APP_GUARD` olarak global kayıtlıdır ve tüm HTTP isteklerinde `x-api-key` header'ını `API_KEY` ortam değişkeniyle karşılaştırır. **Yalnızca HTTP katmanını korur; CLI bu korumayı by-pass eder** (yerel/güvenilir çalıştırma ortamı varsayılır).
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+## Lisans
 
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+Nest çekirdeği [MIT lisanslıdır](https://github.com/nestjs/nest/blob/master/LICENSE).

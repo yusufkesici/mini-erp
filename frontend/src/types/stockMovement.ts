@@ -1,11 +1,11 @@
 import type { StockMovementType } from './enums';
 import type { Product } from './product';
-import type { Warehouse } from './warehouse';
+import type { Location } from './location';
 
 export interface BareStockMovement {
   id: string;
   productId: string;
-  warehouseId: string;
+  locationId: string;
   productionOrderId: string | null;
   type: StockMovementType;
   quantity: string;
@@ -15,12 +15,12 @@ export interface BareStockMovement {
 
 export interface StockMovement extends BareStockMovement {
   product: Product;
-  warehouse: Warehouse;
+  location: Location;
 }
 
 export interface CreateStockMovementInput {
   productId: string;
-  warehouseId: string;
+  locationId: string;
   productionOrderId?: string;
   type: StockMovementType;
   quantity: number;

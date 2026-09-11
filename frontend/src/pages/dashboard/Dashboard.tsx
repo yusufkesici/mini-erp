@@ -21,6 +21,7 @@ export default function Dashboard() {
       <Card title="Düşük Stoklu Ürünler">
         <Table<Stock>
           rowKey="id"
+          scroll={{ x: 'max-content' }}
           loading={isLoading}
           dataSource={lowStock}
           locale={{ emptyText: 'Düşük stoklu ürün yok.' }}

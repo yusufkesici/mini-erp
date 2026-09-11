@@ -4,7 +4,7 @@ Bu doküman `mini-erp`'in klasör yapısını, katmanlarını ve Prisma 7 / ESM'
 
 ## 1. Genel Bakış
 
-`mini-erp`, Product/Warehouse/Stock varlıkları üzerinde çalışan, **çift transport'lu** (REST HTTP API + terminal CLI) bir NestJS + Prisma + PostgreSQL uygulamasıdır. Her iki transport da aynı Service katmanını çağırır — HTTP Controller ve CLI Command, domain mantığını içermeyen ince adaptörlerdir. Amaç: "tek domain mantığı, birden fazla giriş noktası" prensibini somutlaştırmak.
+`mini-erp`, envanter (Product/Warehouse/Stock/BOM/Üretim Emri), muhasebe (Accounting) ve CRM (Customer/Sales Order) domain'lerini kapsayan, **çift transport'lu** (REST HTTP API + terminal CLI) bir NestJS + Prisma + PostgreSQL uygulamasıdır. Her iki transport da aynı Service katmanını çağırır — HTTP Controller ve CLI Command, domain mantığını içermeyen ince adaptörlerdir. Amaç: "tek domain mantığı, birden fazla giriş noktası" prensibini somutlaştırmak. Modül-bazlı kısa açıklamalar için `README.md`'ye, modüller arası veri ilişkileri için §8'e bakın.
 
 ## 2. Klasör Yapısı
 
@@ -39,6 +39,13 @@ src/
   bill-of-materials/    # BillOfMaterial (başlık) + BillOfMaterialItem (satır) — tek modül, ayrı item CRUD'u yok
   production-orders/    # ProductsModule + WarehousesModule + BillOfMaterialsModule import eder
   stock-movements/      # ProductsModule + WarehousesModule import eder; update/delete uç noktası yok (değiştirilemez ledger)
+
+  accounting/    # AccountingEntry — diğer hiçbir modüle FK'sı olmayan bağımsız gelir/gider defteri
+  customers/     # Customer — products/ ile aynı şablon (CRUD + soft-delete)
+  sales-orders/  # SalesOrder (başlık) + SalesOrderItem (satır) — CustomersModule + ProductsModule import eder
+
+  auth/
+    api-key.guard.ts   # modülü yok; app.module.ts'te APP_GUARD olarak global kayıtlı (bkz. §8)
 ```
 
 Her feature modülü kendi kendine yeten bir sınır: `dto/` (validasyon), `controller` (HTTP), `service` (domain+Prisma), `cli/` (terminal) — hepsi tek `*.module.ts`'te `providers`/`controllers` olarak kayıtlı. Yeni bir cross-cutting `src/cli/` üst klasörü **açılmadı**: CLI komutu, HTTP controller'ın terminal eşdeğeri olduğu için, o controller'ın yanında yaşıyor.
@@ -87,9 +94,78 @@ Prisma 7, `schema.prisma`'daki klasik `datasource.url` alanını kaldırdı:
 | | HTTP | CLI |
 |---|---|---|
 | Entry dosyası | `src/main.ts` | `src/cli.ts` |
-| Composition root | `AppModule` | `CliModule` (sadece `PrismaModule` + üç feature modülü — `AppController`/`AppService` gibi HTTP'ye özgü şeyler yok) |
+| Composition root | `AppModule` (+ global `ApiKeyGuard`, bkz. §8) | `CliModule` (`PrismaModule` + tüm feature modülleri, `AppController`/`AppService`/guard gibi HTTP'ye özgü şeyler yok — CLI'da API key koruması uygulanmaz) |
 | Bootstrap | `NestFactory.create()` + `app.listen()` | `nest-commander`'ın `CommandFactory.run()`'ı |
 | Validasyon | Global `ValidationPipe` | Komut içinde manuel `plainToInstance` + `validate()` |
 | Çalıştırma | `npm run start:dev` (watch) / `npm run build && npm run start:prod` | `npm run build && npm run cli -- <komut>` (bkz. not aşağıda) |
 
 **Not:** CLI için `tsx` tabanlı hızlı bir dev script denendi ve kaldırıldı — `tsx` (esbuild), NestJS'in DI'ının ihtiyaç duyduğu `design:paramtypes` decorator metadata'sını güvenilir şekilde üretmiyor; komutlar hatasız derleniyor ama constructor'a inject edilen servisler çalışma anında `undefined` geliyordu. Bu yüzden `cli` script'i doğrudan `tsc` ile derlenmiş `dist/cli.js`'i çalıştırır — CLI'ı çalıştırmadan önce her zaman `npm run build` gerekir.
+
+## 8. Modüller Arası İlişkiler
+
+### 8.1 Veri modeli (Prisma FK ilişkileri)
+
+`prisma/schema.prisma`'daki foreign key'lere göre modüller arası veri ilişkisi:
+
+```mermaid
+erDiagram
+    Warehouse ||--o{ Stock : "depo stoğu"
+    Product ||--o{ Stock : "ürün stoğu"
+
+    Product ||--o{ BillOfMaterial : "çıktı ürünü"
+    BillOfMaterial ||--o{ BillOfMaterialItem : "bileşen satırları"
+    Product ||--o{ BillOfMaterialItem : "bileşen ürün"
+
+    Product ||--o{ ProductionOrder : "üretilecek ürün"
+    BillOfMaterial ||--o{ ProductionOrder : "kullanılan reçete"
+    Warehouse ||--o{ ProductionOrder : "üretim deposu"
+
+    Product ||--o{ StockMovement : "hareket gören ürün"
+    Warehouse ||--o{ StockMovement : "hareket deposu"
+    ProductionOrder |o--o{ StockMovement : "üretim kaynaklı hareket (opsiyonel)"
+
+    Customer ||--o{ SalesOrder : "sipariş geçmişi"
+    SalesOrder ||--o{ SalesOrderItem : "sipariş kalemleri"
+    Product ||--o{ SalesOrderItem : "sipariş edilen ürün"
+
+    AccountingEntry {
+        string type "INCOME veya EXPENSE"
+    }
+```
+
+`AccountingEntry` diyagramda kasıtlı olarak izole bırakıldı: hiçbir tabloya FK'sı yok, tamamen bağımsız bir gelir/gider defteri (`Sipariş tamamlandı → gelir kaydı oluştur` gibi bir otomasyon **yok**; muhasebe kayıtları elle açılır).
+
+Önemli kısıtlar (silme davranışı):
+- `Stock`/`ProductionOrder`/`StockMovement`/`BillOfMaterialItem`/`SalesOrderItem` → `Product`/`Warehouse`/`Customer`: **`onDelete: Restrict`** (bağımlı kayıt varken ebeveyn hard-delete edilemez).
+- `BillOfMaterialItem` → `BillOfMaterial`, `SalesOrderItem` → `SalesOrder`: **`onDelete: Cascade`** (başlık silinince satırlar da silinir).
+- `StockMovement.productionOrderId` → `ProductionOrder`: **`onDelete: SetNull`** (üretim emri silinirse hareket kaydı, `productionOrderId` alanı `null`'lanarak korunur — ledger asla silinmez).
+
+Bu Restrict/Cascade/SetNull davranışının gerçek bir Postgres üzerinden uçtan uca doğrulaması için `test/integration.e2e-spec.ts`'ye bakın (geçersiz FK referansıyla `StockMovement` oluşturma denemesinin DB seviyesinde reddedildiğini de kapsar — `StockMovementsService.create`, `productId`/`warehouseId`'yi servis katmanında önceden doğrulamaz, bütünlük tamamen DB FK kısıtına bırakılmıştır).
+
+### 8.2 Modül bağımlılık grafiği (NestJS `imports` / servisler arası inject)
+
+Bir modülün `imports` dizisinde başka bir feature modülü varsa, bu genelde o modülün Service'ini inject ettiği anlamına gelir (bkz. §3 "Servisler arası bağımlılık"):
+
+```mermaid
+graph LR
+    Stock --> Products
+    Stock --> Warehouses
+
+    ProductionOrders --> Products
+    ProductionOrders --> Warehouses
+    ProductionOrders --> BillOfMaterials
+
+    StockMovements --> Products
+    StockMovements --> Warehouses
+
+    SalesOrders --> Customers
+    SalesOrders --> Products
+
+    Accounting((Accounting))
+    style Accounting fill:#eee,stroke:#999
+```
+
+- `ProductionOrdersService`, `bomId` verilmediğinde `BillOfMaterialsService.findActiveForProduct()`'ı gerçekten çağırır — bu tek **kullanılan** cross-module servis bağımlılığı.
+- `StockModule`'ün `Products`/`Warehouses` import'u, `StockCreateCommand`'ın kod→ID çözümlemesi için kullanılır.
+- `SalesOrdersModule`, `CustomersModule` ve `ProductsModule`'ü import eder ama `SalesOrdersService` şu an bu servisleri **çağırmaz** — `customerId`/`productId` geçerliliği (§8.1'de belirtildiği gibi) sadece DB FK kısıtına bırakılmıştır, servis katmanında ön-doğrulama yoktur. Bu, `StockMovementsService` ile aynı, projede tutarlı bir tasarım tercihi.
+- `Accounting` hiçbir modülü import etmez, hiçbir modül de onu import etmez — hem veri hem modül grafiğinde tamamen izole.

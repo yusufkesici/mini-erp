@@ -1,0 +1,14 @@
+{
+  "name": "mini-erp-db-schema-mcp",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "mini-erp Postgres veritabanına bağlanıp şemayı okuyan/özetleyen yerel MCP sunucusu",
+  "main": "index.js",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "dotenv": "^16.4.5",
+    "pg": "^8.13.0",
+    "zod": "^3.24.0"
+  }
+}

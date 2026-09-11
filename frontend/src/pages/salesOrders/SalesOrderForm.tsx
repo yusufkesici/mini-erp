@@ -6,11 +6,13 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { salesOrdersApi } from '../../api/salesOrders';
 import { CustomerSelect } from '../../components/common/CustomerSelect';
 import { ProductSelect } from '../../components/common/ProductSelect';
+import { WarehouseSelect } from '../../components/common/WarehouseSelect';
 import { ApiError } from '../../lib/apiClient';
 import type { CreateSalesOrderInput } from '../../types/salesOrder';
 
 interface FormValues {
   customerId: string;
+  warehouseId: string;
   orderDate?: Dayjs;
   note?: string;
   items: { productId: string; quantity: number; unitPrice: number }[];
@@ -28,6 +30,7 @@ export default function SalesOrderForm() {
     mutationFn: (values: FormValues) => {
       const input: CreateSalesOrderInput = {
         customerId: values.customerId,
+        warehouseId: values.warehouseId,
         orderDate: values.orderDate?.toISOString(),
         note: values.note,
         items: values.items,
@@ -52,6 +55,9 @@ export default function SalesOrderForm() {
       >
         <Form.Item name="customerId" label="Müşteri" rules={[{ required: true, message: 'Müşteri zorunludur' }]}>
           <CustomerSelect />
+        </Form.Item>
+        <Form.Item name="warehouseId" label="Depo" rules={[{ required: true, message: 'Depo zorunludur' }]}>
+          <WarehouseSelect />
         </Form.Item>
         <Form.Item name="orderDate" label="Sipariş Tarihi">
           <DatePicker style={{ width: '100%' }} />

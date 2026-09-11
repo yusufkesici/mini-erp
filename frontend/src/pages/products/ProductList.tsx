@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom';
 import { productsApi } from '../../api/products';
 import { ApiError } from '../../lib/apiClient';
 import { formatMoney } from '../../lib/decimal';
-import { PRODUCT_TYPE_LABELS, UNIT_OF_MEASURE_LABELS } from '../../types/enums';
+import { PRODUCT_TYPE_LABELS, TRACKING_TYPE_LABELS, UNIT_OF_MEASURE_LABELS } from '../../types/enums';
 import type { Product } from '../../types/product';
 
 export default function ProductList() {
@@ -24,7 +24,7 @@ export default function ProductList() {
 
   return (
     <div>
-      <Space style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
+      <Space style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }} wrap>
         <Typography.Title level={3} style={{ margin: 0 }}>
           Ürünler
         </Typography.Title>
@@ -36,6 +36,7 @@ export default function ProductList() {
       </Space>
       <Table<Product>
         rowKey="id"
+        scroll={{ x: 'max-content' }}
         loading={isLoading}
         dataSource={data}
         columns={[
@@ -43,6 +44,13 @@ export default function ProductList() {
           { title: 'Ad', dataIndex: 'name' },
           { title: 'Tür', dataIndex: 'type', render: (type: Product['type']) => PRODUCT_TYPE_LABELS[type] },
           { title: 'Birim', dataIndex: 'unit', render: (unit: Product['unit']) => UNIT_OF_MEASURE_LABELS[unit] },
+          {
+            title: 'Takip',
+            dataIndex: 'trackingType',
+            render: (t: Product['trackingType']) => (
+              <Tag color={t === 'BARCODE_MANUAL' ? 'purple' : 'default'}>{TRACKING_TYPE_LABELS[t]}</Tag>
+            ),
+          },
           { title: 'Satış Fiyatı', dataIndex: 'salePrice', render: (v: string | null) => (v ? formatMoney(v) : '—') },
           {
             title: 'Durum',

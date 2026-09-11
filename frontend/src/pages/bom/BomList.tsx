@@ -23,7 +23,7 @@ export default function BomList() {
 
   return (
     <div>
-      <Space style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
+      <Space style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }} wrap>
         <Typography.Title level={3} style={{ margin: 0 }}>
           Reçeteler (BOM)
         </Typography.Title>
@@ -35,6 +35,7 @@ export default function BomList() {
       </Space>
       <Table<BillOfMaterial>
         rowKey="id"
+        scroll={{ x: 'max-content' }}
         loading={isLoading}
         dataSource={data}
         columns={[

@@ -1,4 +1,10 @@
-const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000';
+// VITE_API_BASE_URL açıkça verilmemişse aynı origin üzerinden /api'ye (bkz. vite.config.ts
+// server.proxy) istek atılır — hem localhost'tan hem telefon/LAN IP'sinden erişimde, hem
+// HTTP hem HTTPS altında doğru çalışır. Mutlak bir http://host:3000 URL'i kullanmak,
+// frontend HTTPS (mkcert, kamera erişimi için) iken "mixed content" engeline takılıyordu:
+// localhost tarayıcılarca güvenli sayıldığından PC'de fark edilmiyordu, ama telefon LAN
+// IP'sinden bağlanınca tarayıcı insecure http:// isteğini sessizce engelliyordu.
+const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '/api';
 const API_KEY_STORAGE_KEY = 'mini-erp-api-key';
 
 export class ApiError extends Error {

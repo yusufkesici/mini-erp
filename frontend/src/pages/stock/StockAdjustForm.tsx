@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { stockApi } from '../../api/stock';
 import { ProductSelect } from '../../components/common/ProductSelect';
-import { WarehouseSelect } from '../../components/common/WarehouseSelect';
+import { LocationSelect } from '../../components/common/LocationSelect';
 import { ApiError } from '../../lib/apiClient';
 import { formatQty, parseDecimal } from '../../lib/decimal';
 import type { CreateStockInput } from '../../types/stock';
@@ -27,7 +27,7 @@ export default function StockAdjustForm() {
     if (!data) return;
     form.setFieldsValue({
       productId: data.productId,
-      warehouseId: data.warehouseId,
+      locationId: data.locationId,
       minStockLevel: data.minStockLevel ? parseDecimal(data.minStockLevel) : undefined,
     });
   }, [data, form]);
@@ -52,8 +52,8 @@ export default function StockAdjustForm() {
           <Descriptions.Item label="Ürün">
             {data.product.code} — {data.product.name}
           </Descriptions.Item>
-          <Descriptions.Item label="Depo">
-            {data.warehouse.code} — {data.warehouse.name}
+          <Descriptions.Item label="Konum">
+            {data.location.code} — {data.location.name} ({data.location.warehouse.code})
           </Descriptions.Item>
           <Descriptions.Item label="Mevcut Miktar">{formatQty(data.quantity)}</Descriptions.Item>
         </Descriptions>
@@ -64,8 +64,8 @@ export default function StockAdjustForm() {
             <Form.Item name="productId" label="Ürün" rules={[{ required: true, message: 'Ürün zorunludur' }]}>
               <ProductSelect />
             </Form.Item>
-            <Form.Item name="warehouseId" label="Depo" rules={[{ required: true, message: 'Depo zorunludur' }]}>
-              <WarehouseSelect />
+            <Form.Item name="locationId" label="Konum" rules={[{ required: true, message: 'Konum zorunludur' }]}>
+              <LocationSelect />
             </Form.Item>
           </>
         )}

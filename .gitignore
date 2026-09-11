@@ -8,6 +8,9 @@
 /frontend/dist
 /frontend/.env
 
+# yerel MCP sunucusu
+/mcp-server/node_modules
+
 # Claude Code: agent/skill/hook tanımları takip ediliyor ve paylaşılıyor; yalnızca
 # kişisel/oturuma özel dosyalar hariç tutuluyor.
 .claude/settings.local.json

@@ -1,18 +1,10 @@
-import { IsDateString, IsEnum, IsNumber, IsOptional, Min } from 'class-validator';
-import { ProductionOrderStatus } from '../../generated/prisma/enums.js';
+import { IsDateString, IsOptional } from 'class-validator';
 
-// productId/bomId/warehouseId/plannedQuantity oluşturmadan sonra değiştirilmez;
-// update yalnızca durum ve gerçekleşen ilerleme alanlarını hedefler
+// productId/bomId/warehouseId/plannedQuantity oluşturmadan sonra değiştirilmez; status da
+// (updateStatus()/PATCH :id/status) ve producedQuantity de (reportProduction()/POST
+// :id/report-production, stokla senkron kalması için) burada değil. Bu DTO yalnızca
+// tarih alanlarını hedefler.
 export class UpdateProductionOrderDto {
-  @IsOptional()
-  @IsEnum(ProductionOrderStatus)
-  status?: ProductionOrderStatus;
-
-  @IsOptional()
-  @IsNumber()
-  @Min(0)
-  producedQuantity?: number;
-
   @IsOptional()
   @IsDateString()
   plannedStartDate?: string;

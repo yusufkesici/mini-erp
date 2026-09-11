@@ -1,21 +1,21 @@
 import type { Product } from './product';
-import type { Warehouse } from './warehouse';
+import type { Location } from './location';
 
 export interface Stock {
   id: string;
   productId: string;
-  warehouseId: string;
+  locationId: string;
   quantity: string;
   minStockLevel: string | null;
   createdAt: string;
   updatedAt: string;
   product: Product;
-  warehouse: Warehouse;
+  location: Location;
 }
 
 export interface CreateStockInput {
   productId: string;
-  warehouseId: string;
+  locationId: string;
   quantity?: number;
   minStockLevel?: number;
 }

@@ -17,3 +17,24 @@ body {
 #root {
   min-height: 100vh;
 }
+
+/* "Barkodu Yazdır" butonu window.print()'i tetiklediğinde yalnızca .barcode-print-area
+   içeriği yazdırılır (bkz. BarcodeLabel.tsx) — sayfanın geri kalanı görünürlükten
+   çıkarılır, hedef alan tam sayfaya sabitlenir. */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .barcode-print-area,
+  .barcode-print-area * {
+    visibility: visible;
+  }
+  .barcode-print-area {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+}

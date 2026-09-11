@@ -22,7 +22,7 @@ export default function WarehouseList() {
 
   return (
     <div>
-      <Space style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
+      <Space style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }} wrap>
         <Typography.Title level={3} style={{ margin: 0 }}>
           Depolar
         </Typography.Title>
@@ -34,6 +34,7 @@ export default function WarehouseList() {
       </Space>
       <Table<Warehouse>
         rowKey="id"
+        scroll={{ x: 'max-content' }}
         loading={isLoading}
         dataSource={data}
         columns={[

@@ -1,4 +1,4 @@
-import { ProductType, UnitOfMeasure } from '../../generated/prisma/enums.js';
+import { ProductType, TrackingType, UnitOfMeasure } from '../../generated/prisma/enums.js';
 import { IsBoolean, IsEnum, IsNumber, IsOptional, IsString, Min } from 'class-validator';
 
 export class CreateProductDto {
@@ -22,6 +22,11 @@ export class CreateProductDto {
   @IsOptional()
   @IsEnum(UnitOfMeasure)
   unit?: UnitOfMeasure;
+
+  // BOM_AUTO (varsayılan) / BARCODE_MANUAL — bkz. schema.prisma TrackingType enum yorumu.
+  @IsOptional()
+  @IsEnum(TrackingType)
+  trackingType?: TrackingType;
 
   @IsOptional()
   @IsNumber()

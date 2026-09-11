@@ -13,7 +13,7 @@ export default function AccountingList() {
 
   return (
     <div>
-      <Space style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
+      <Space style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }} wrap>
         <Typography.Title level={3} style={{ margin: 0 }}>
           Muhasebe
         </Typography.Title>
@@ -28,6 +28,7 @@ export default function AccountingList() {
       </div>
       <Table<AccountingEntry>
         rowKey="id"
+        scroll={{ x: 'max-content' }}
         loading={isLoading}
         dataSource={data}
         columns={[

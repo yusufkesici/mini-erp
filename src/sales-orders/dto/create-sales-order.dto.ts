@@ -1,10 +1,20 @@
 import { Type } from 'class-transformer';
-import { ArrayMinSize, IsArray, IsDateString, IsOptional, IsString, ValidateNested } from 'class-validator';
+import {
+  ArrayMinSize,
+  IsArray,
+  IsDateString,
+  IsOptional,
+  IsString,
+  ValidateNested,
+} from 'class-validator';
 import { CreateSalesOrderItemDto } from './create-sales-order-item.dto.js';
 
 export class CreateSalesOrderDto {
   @IsString()
   customerId!: string;
+
+  @IsString()
+  warehouseId!: string;
 
   @IsOptional()
   @IsDateString()

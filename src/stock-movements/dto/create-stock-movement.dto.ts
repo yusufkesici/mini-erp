@@ -6,11 +6,15 @@ export class CreateStockMovementDto {
   productId!: string;
 
   @IsString()
-  warehouseId!: string;
+  locationId!: string;
 
   @IsOptional()
   @IsString()
   productionOrderId?: string;
+
+  @IsOptional()
+  @IsString()
+  salesOrderItemId?: string;
 
   @IsEnum(StockMovementType)
   type!: StockMovementType;

@@ -126,6 +126,7 @@ export default function SalesOrderDetail() {
         <Table<SalesOrderItem>
           rowKey="id"
           pagination={false}
+          scroll={{ x: 'max-content' }}
           dataSource={data.items}
           columns={[
             { title: 'Ürün', render: (_: unknown, r: SalesOrderItem) => `${r.product.code} — ${r.product.name}` },

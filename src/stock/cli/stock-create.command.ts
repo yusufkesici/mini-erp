@@ -6,30 +6,51 @@ import { StockService } from '../stock.service.js';
 import { CreateStockDto } from '../dto/create-stock.dto.js';
 import { ProductsService } from '../../products/products.service.js';
 import { WarehousesService } from '../../warehouses/warehouses.service.js';
+import { LocationsService } from '../../locations/locations.service.js';
 
 interface StockCreateOptions {
   productCode: string;
-  warehouseCode: string;
+  locationCode?: string;
+  warehouseCode?: string;
   quantity?: number;
   minStockLevel?: number;
 }
 
-@SubCommand({ name: 'create', description: 'Ürün/depo için stok kaydı oluşturur' })
+@SubCommand({ name: 'create', description: 'Ürün/konum için stok kaydı oluşturur' })
 export class StockCreateCommand extends CommandRunner {
   constructor(
     private readonly stockService: StockService,
     private readonly productsService: ProductsService,
     private readonly warehousesService: WarehousesService,
+    private readonly locationsService: LocationsService,
   ) {
     super();
   }
 
   async run(_passedParams: string[], options: StockCreateOptions): Promise<void> {
+    if (!options.locationCode && !options.warehouseCode) {
+      console.error('--location-code veya --warehouse-code belirtilmeli');
+      process.exitCode = 1;
+      return;
+    }
+
     let product;
-    let warehouse;
+    let locationId: string;
+    let locationLabel: string;
     try {
       product = await this.productsService.findByCode(options.productCode);
-      warehouse = await this.warehousesService.findByCode(options.warehouseCode);
+      // --location-code doğrudan bir rafı hedefler; --warehouse-code verilirse o depo'nun
+      // otomatik "Genel Alan" rafına çözümlenir (bkz. LocationsService.findDefaultForWarehouse).
+      if (options.locationCode) {
+        const location = await this.locationsService.findByCode(options.locationCode);
+        locationId = location.id;
+        locationLabel = location.code;
+      } else {
+        const warehouse = await this.warehousesService.findByCode(options.warehouseCode!);
+        const location = await this.locationsService.findDefaultForWarehouse(warehouse.id);
+        locationId = location.id;
+        locationLabel = `${warehouse.code} (${location.code})`;
+      }
     } catch (error) {
       if (error instanceof NotFoundException) {
         console.error(error.message);
@@ -41,7 +62,7 @@ export class StockCreateCommand extends CommandRunner {
 
     const dto = plainToInstance(CreateStockDto, {
       productId: product.id,
-      warehouseId: warehouse.id,
+      locationId,
       quantity: options.quantity,
       minStockLevel: options.minStockLevel,
     });
@@ -56,7 +77,7 @@ export class StockCreateCommand extends CommandRunner {
     }
 
     const stock = await this.stockService.create(dto);
-    console.log(`Stok oluşturuldu: ${product.code} @ ${warehouse.code} = ${stock.quantity}`);
+    console.log(`Stok oluşturuldu: ${product.code} @ ${locationLabel} = ${stock.quantity}`);
   }
 
   @Option({ flags: '-p, --product-code <productCode>', description: 'Ürün kodu' })
@@ -64,7 +85,12 @@ export class StockCreateCommand extends CommandRunner {
     return val;
   }
 
-  @Option({ flags: '-w, --warehouse-code <warehouseCode>', description: 'Depo kodu' })
+  @Option({ flags: '-l, --location-code [locationCode]', description: 'Konum (raf) kodu' })
+  parseLocationCode(val: string): string {
+    return val;
+  }
+
+  @Option({ flags: '-w, --warehouse-code [warehouseCode]', description: "Depo kodu (depo'nun Genel Alan rafını kullanır)" })
   parseWarehouseCode(val: string): string {
     return val;
   }

@@ -22,7 +22,7 @@ export default function CustomerDetail() {
     <Card loading={isLoading} style={{ maxWidth: 900 }}>
       {customer && (
         <>
-          <Space style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
+          <Space style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }} wrap>
             <Typography.Title level={3} style={{ margin: 0 }}>
               {customer.code} — {customer.name}
             </Typography.Title>
@@ -49,6 +49,7 @@ export default function CustomerDetail() {
           <Typography.Title level={5}>Sipariş Geçmişi</Typography.Title>
           <Table<SalesOrder>
             rowKey="id"
+            scroll={{ x: 'max-content' }}
             loading={ordersLoading}
             dataSource={orders}
             columns={[

@@ -5,7 +5,7 @@ export class CreateStockDto {
   productId!: string;
 
   @IsString()
-  warehouseId!: string;
+  locationId!: string;
 
   @IsOptional()
   @IsNumber()

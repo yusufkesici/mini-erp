@@ -17,7 +17,7 @@ export default function BomDetail() {
     <Card loading={isLoading} style={{ maxWidth: 800 }}>
       {data && (
         <>
-          <Space style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
+          <Space style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }} wrap>
             <Typography.Title level={3} style={{ margin: 0 }}>
               {data.name ?? 'Reçete'} — {data.product.code}
             </Typography.Title>
@@ -39,6 +39,7 @@ export default function BomDetail() {
             rowKey="id"
             dataSource={data.items}
             pagination={false}
+            scroll={{ x: 'max-content' }}
             columns={[
               {
                 title: 'Bileşen',

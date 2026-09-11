@@ -14,6 +14,7 @@ export interface SalesOrderItem {
 export interface SalesOrder {
   id: string;
   customerId: string;
+  warehouseId: string;
   orderDate: string;
   status: SalesOrderStatus;
   note: string | null;
@@ -31,6 +32,7 @@ export interface CreateSalesOrderItemInput {
 
 export interface CreateSalesOrderInput {
   customerId: string;
+  warehouseId: string;
   orderDate?: string;
   note?: string;
   items: CreateSalesOrderItemInput[];

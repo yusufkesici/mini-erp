@@ -12,15 +12,15 @@ export class StockService {
   ) {}
 
   // Sıfırdan büyük bir başlangıç miktarı, StockMovementsService üzerinden ADJUSTMENT_IN
-  // hareketi olarak işlenir — Stock.quantity, StockMovement ledger'ından bağımsız bir
-  // değerle asla oluşturulmaz (bkz. StockMovementsService.create'in Stock upsert'i).
+  // hareketi olarak işlenir — StockLevel.quantity, StockMovement ledger'ından bağımsız bir
+  // değerle asla oluşturulmaz (bkz. StockMovementsService.create'in StockLevel upsert'i).
   async create(dto: CreateStockDto) {
     const quantity = dto.quantity ?? 0;
     if (quantity === 0) {
-      return this.prisma.stock.create({
+      return this.prisma.stockLevel.create({
         data: {
           product: { connect: { id: dto.productId } },
-          warehouse: { connect: { id: dto.warehouseId } },
+          location: { connect: { id: dto.locationId } },
           minStockLevel: dto.minStockLevel,
         },
       });
@@ -28,40 +28,42 @@ export class StockService {
 
     await this.stockMovementsService.create({
       productId: dto.productId,
-      warehouseId: dto.warehouseId,
+      locationId: dto.locationId,
       type: 'ADJUSTMENT_IN',
       quantity,
       note: 'Başlangıç stok kaydı',
     });
-    const where = { productId_warehouseId: { productId: dto.productId, warehouseId: dto.warehouseId } };
+    const where = { productId_locationId: { productId: dto.productId, locationId: dto.locationId } };
     if (dto.minStockLevel !== undefined) {
-      return this.prisma.stock.update({ where, data: { minStockLevel: dto.minStockLevel } });
+      return this.prisma.stockLevel.update({ where, data: { minStockLevel: dto.minStockLevel } });
     }
-    return this.prisma.stock.findUniqueOrThrow({ where });
+    return this.prisma.stockLevel.findUniqueOrThrow({ where });
   }
 
   findAll() {
-    return this.prisma.stock.findMany({ include: { product: true, warehouse: true } });
+    return this.prisma.stockLevel.findMany({
+      include: { product: true, location: { include: { warehouse: true } } },
+    });
   }
 
   async findOne(id: string) {
-    const stock = await this.prisma.stock.findUnique({
+    const stockLevel = await this.prisma.stockLevel.findUnique({
       where: { id },
-      include: { product: true, warehouse: true },
+      include: { product: true, location: { include: { warehouse: true } } },
     });
-    if (!stock) {
-      throw new NotFoundException(`Stock ${id} not found`);
+    if (!stockLevel) {
+      throw new NotFoundException(`Stock level ${id} not found`);
     }
-    return stock;
+    return stockLevel;
   }
 
   async update(id: string, dto: UpdateStockDto) {
     await this.findOne(id);
-    return this.prisma.stock.update({ where: { id }, data: dto });
+    return this.prisma.stockLevel.update({ where: { id }, data: dto });
   }
 
   async remove(id: string) {
     await this.findOne(id);
-    return this.prisma.stock.delete({ where: { id } });
+    return this.prisma.stockLevel.delete({ where: { id } });
   }
 }

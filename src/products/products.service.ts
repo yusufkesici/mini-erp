@@ -31,6 +31,15 @@ export class ProductsService {
     return product;
   }
 
+  // Depo tarama ekranı için: SKU (`code`) değil, fiziksel barkod (`barcode`) ile arama.
+  async findByBarcode(barcode: string) {
+    const product = await this.prisma.product.findFirst({ where: { barcode, deletedAt: null } });
+    if (!product) {
+      throw new NotFoundException(`Barkodu "${barcode}" olan bir ürün bulunamadı`);
+    }
+    return product;
+  }
+
   async update(id: string, dto: UpdateProductDto) {
     await this.findOne(id);
     return this.prisma.product.update({ where: { id }, data: dto });

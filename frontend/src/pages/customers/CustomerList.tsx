@@ -22,7 +22,7 @@ export default function CustomerList() {
 
   return (
     <div>
-      <Space style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
+      <Space style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }} wrap>
         <Typography.Title level={3} style={{ margin: 0 }}>
           Müşteriler
         </Typography.Title>
@@ -34,6 +34,7 @@ export default function CustomerList() {
       </Space>
       <Table<Customer>
         rowKey="id"
+        scroll={{ x: 'max-content' }}
         loading={isLoading}
         dataSource={data}
         columns={[

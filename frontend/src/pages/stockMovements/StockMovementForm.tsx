@@ -3,7 +3,7 @@ import { App, Button, Card, Form, Input, InputNumber, Select, Space } from 'antd
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { stockMovementsApi } from '../../api/stockMovements';
 import { ProductSelect } from '../../components/common/ProductSelect';
-import { WarehouseSelect } from '../../components/common/WarehouseSelect';
+import { LocationSelect } from '../../components/common/LocationSelect';
 import { ApiError } from '../../lib/apiClient';
 import { STOCK_MOVEMENT_TYPE_OPTIONS } from '../../types/enums';
 import type { CreateStockMovementInput } from '../../types/stockMovement';
@@ -18,7 +18,7 @@ export default function StockMovementForm() {
   const productionOrderId = searchParams.get('productionOrderId') ?? undefined;
   const initialValues: Partial<CreateStockMovementInput> = {
     productId: searchParams.get('productId') ?? undefined,
-    warehouseId: searchParams.get('warehouseId') ?? undefined,
+    locationId: searchParams.get('locationId') ?? undefined,
     type: (searchParams.get('type') as CreateStockMovementInput['type'] | null) ?? undefined,
   };
 
@@ -45,8 +45,8 @@ export default function StockMovementForm() {
         <Form.Item name="productId" label="Ürün" rules={[{ required: true, message: 'Ürün zorunludur' }]}>
           <ProductSelect />
         </Form.Item>
-        <Form.Item name="warehouseId" label="Depo" rules={[{ required: true, message: 'Depo zorunludur' }]}>
-          <WarehouseSelect />
+        <Form.Item name="locationId" label="Konum" rules={[{ required: true, message: 'Konum zorunludur' }]}>
+          <LocationSelect />
         </Form.Item>
         <Form.Item name="type" label="Hareket Tipi" rules={[{ required: true, message: 'Hareket tipi zorunludur' }]}>
           <Select options={STOCK_MOVEMENT_TYPE_OPTIONS} />

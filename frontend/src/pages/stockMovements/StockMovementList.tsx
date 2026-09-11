@@ -12,7 +12,7 @@ export default function StockMovementList() {
 
   return (
     <div>
-      <Space style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
+      <Space style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }} wrap>
         <Typography.Title level={3} style={{ margin: 0 }}>
           Stok Hareketleri
         </Typography.Title>
@@ -24,12 +24,13 @@ export default function StockMovementList() {
       </Space>
       <Table<StockMovement>
         rowKey="id"
+        scroll={{ x: 'max-content' }}
         loading={isLoading}
         dataSource={data}
         columns={[
           { title: 'Tarih', dataIndex: 'createdAt', render: (v: string) => new Date(v).toLocaleString('tr-TR') },
           { title: 'Ürün', render: (_: unknown, r: StockMovement) => `${r.product.code} — ${r.product.name}` },
-          { title: 'Depo', render: (_: unknown, r: StockMovement) => `${r.warehouse.code} — ${r.warehouse.name}` },
+          { title: 'Konum', render: (_: unknown, r: StockMovement) => `${r.location.code} (${r.location.warehouse.code})` },
           {
             title: 'Tip',
             dataIndex: 'type',

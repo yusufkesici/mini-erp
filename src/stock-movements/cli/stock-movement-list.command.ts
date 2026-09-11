@@ -16,7 +16,8 @@ export class StockMovementListCommand extends CommandRunner {
     console.table(
       movements.map((movement) => ({
         product: movement.product.code,
-        warehouse: movement.warehouse.code,
+        location: movement.location.code,
+        warehouse: movement.location.warehouse.code,
         type: movement.type,
         quantity: movement.quantity.toString(),
         productionOrderId: movement.productionOrderId ?? '-',

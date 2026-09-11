@@ -5,11 +5,16 @@ import { AppModule } from './app.module.js';
 
 async function bootstrap() {
   if (!process.env.API_KEY) {
-    throw new Error('API_KEY ortam değişkeni tanımlı değil (.env dosyasına bakın)');
+    throw new Error(
+      'API_KEY ortam değişkeni tanımlı değil (.env dosyasına bakın)',
+    );
   }
 
   const app = await NestFactory.create(AppModule);
-  app.enableCors({ origin: process.env.CORS_ORIGIN ?? 'http://localhost:5173' });
+  const allowedOrigins = (process.env.CORS_ORIGIN ?? 'http://localhost:5173')
+    .split(',')
+    .map((origin) => origin.trim());
+  app.enableCors({ origin: allowedOrigins });
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
   await app.listen(process.env.PORT ?? 3000);
 }

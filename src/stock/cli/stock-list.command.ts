@@ -16,7 +16,8 @@ export class StockListCommand extends CommandRunner {
     console.table(
       stocks.map((stock) => ({
         product: stock.product.code,
-        warehouse: stock.warehouse.code,
+        location: stock.location.code,
+        warehouse: stock.location.warehouse.code,
         quantity: stock.quantity.toString(),
         minStockLevel: stock.minStockLevel?.toString() ?? '-',
       })),

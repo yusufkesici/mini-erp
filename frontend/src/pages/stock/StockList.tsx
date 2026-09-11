@@ -11,7 +11,7 @@ export default function StockList() {
 
   return (
     <div>
-      <Space style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
+      <Space style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }} wrap>
         <Typography.Title level={3} style={{ margin: 0 }}>
           Stok Durumu
         </Typography.Title>
@@ -27,11 +27,13 @@ export default function StockList() {
       />
       <Table<Stock>
         rowKey="id"
+        scroll={{ x: 'max-content' }}
         loading={isLoading}
         dataSource={data}
         columns={[
           { title: 'Ürün', render: (_: unknown, r: Stock) => `${r.product.code} — ${r.product.name}` },
-          { title: 'Depo', render: (_: unknown, r: Stock) => `${r.warehouse.code} — ${r.warehouse.name}` },
+          { title: 'Konum', render: (_: unknown, r: Stock) => `${r.location.code} — ${r.location.name}` },
+          { title: 'Depo', render: (_: unknown, r: Stock) => r.location.warehouse.code },
           { title: 'Miktar', dataIndex: 'quantity', render: (v: string) => formatQty(v) },
           {
             title: 'Min. Stok',
@@ -51,7 +53,7 @@ export default function StockList() {
               <Space>
                 <Link to={`/stock/${record.id}/edit`}>Düzenle</Link>
                 <Link
-                  to={`/stock-movements/new?productId=${record.productId}&warehouseId=${record.warehouseId}`}
+                  to={`/stock-movements/new?productId=${record.productId}&locationId=${record.locationId}`}
                 >
                   <SwapOutlined /> Hareket Ekle
                 </Link>

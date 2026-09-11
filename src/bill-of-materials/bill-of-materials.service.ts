@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { Prisma } from '../generated/prisma/client.js';
 import { CreateBomDto } from './dto/create-bom.dto.js';
@@ -10,9 +14,22 @@ export interface BomTreeNode {
   productName: string;
   // kök ürün için null; bileşenler için üst düğümün 1 birimi başına gereken miktar
   quantity: number | null;
+  // kök ürün için null; bileşenler için kökten itibaren birikmiş (patlatılmış) miktar
+  cumulativeQuantity: number | null;
   // bu ürünün kendi aktif BOM'unun id'si, yoksa null (yaprak bileşen)
   bomId: string | null;
   children: BomTreeNode[];
+}
+
+// explode()'un ürettiği, aynı bileşenin ağaçtaki tüm dallardan gelen miktarlarının
+// toplandığı düz (flat) liste satırı — satın alma/üretim planlama için.
+export interface BomExplosionLine {
+  productId: string;
+  productCode: string;
+  productName: string;
+  quantity: number;
+  // true: aktif BOM'u yok (ham madde, satın alınır) — false: kendi aktif BOM'u var (ara mamul, üretilebilir)
+  isLeaf: boolean;
 }
 
 @Injectable()
@@ -27,8 +44,11 @@ export class BillOfMaterialsService {
   // isteğin araya girip görünmeyen bir döngü commit etmesini engeller (bkz. StockMovementsService).
   async create(dto: CreateBomDto) {
     const isActive = dto.isActive ?? true;
-    const componentProductIds = dto.items.map((item) => item.componentProductId);
+    const componentProductIds = dto.items.map(
+      (item) => item.componentProductId,
+    );
     this.assertNoSelfReference(dto.productId, componentProductIds);
+    await this.assertTrackingTypeCompatible(dto.productId, componentProductIds);
 
     return this.prisma.$transaction(
       async (tx) => {
@@ -45,7 +65,12 @@ export class BillOfMaterialsService {
             name: dto.name,
             outputQuantity: dto.outputQuantity,
             isActive,
-            items: { create: dto.items.map((item) => ({ componentProductId: item.componentProductId, quantity: item.quantity })) },
+            items: {
+              create: dto.items.map((item) => ({
+                componentProductId: item.componentProductId,
+                quantity: item.quantity,
+              })),
+            },
           },
           include: { items: true },
         });
@@ -55,7 +80,9 @@ export class BillOfMaterialsService {
   }
 
   findAll() {
-    return this.prisma.billOfMaterial.findMany({ include: { product: true, items: true } });
+    return this.prisma.billOfMaterial.findMany({
+      include: { product: true, items: true },
+    });
   }
 
   async findOne(id: string) {
@@ -79,7 +106,9 @@ export class BillOfMaterialsService {
       include: { items: true },
     });
     if (!bom) {
-      throw new NotFoundException(`Ürün ${productId} için aktif bir ürün ağacı (BOM) bulunamadı`);
+      throw new NotFoundException(
+        `Ürün ${productId} için aktif bir ürün ağacı (BOM) bulunamadı`,
+      );
     }
     return bom;
   }
@@ -96,6 +125,10 @@ export class BillOfMaterialsService {
       ? dto.items.map((item) => item.componentProductId)
       : existing.items.map((item) => item.componentProductId);
     this.assertNoSelfReference(existing.productId, componentProductIds);
+    await this.assertTrackingTypeCompatible(
+      existing.productId,
+      componentProductIds,
+    );
 
     return this.prisma.$transaction(
       async (tx) => {
@@ -104,7 +137,11 @@ export class BillOfMaterialsService {
         }
         if (dto.isActive) {
           await tx.billOfMaterial.updateMany({
-            where: { productId: existing.productId, isActive: true, id: { not: id } },
+            where: {
+              productId: existing.productId,
+              isActive: true,
+              id: { not: id },
+            },
             data: { isActive: false },
           });
         }
@@ -119,7 +156,10 @@ export class BillOfMaterialsService {
               ? {
                   items: {
                     deleteMany: {},
-                    create: dto.items.map((item) => ({ componentProductId: item.componentProductId, quantity: item.quantity })),
+                    create: dto.items.map((item) => ({
+                      componentProductId: item.componentProductId,
+                      quantity: item.quantity,
+                    })),
                   },
                 }
               : {}),
@@ -142,25 +182,135 @@ export class BillOfMaterialsService {
   // veriye karşı bir güvenlik ağı olarak, kökten köke kadarki soy zincirini (ancestors)
   // takip edip aynı üründe ikinci kez karşılaşırsa orada yaprak olarak durur.
   async getTree(productId: string): Promise<BomTreeNode> {
-    const rootProduct = await this.prisma.product.findFirst({ where: { id: productId, deletedAt: null } });
+    const rootProduct = await this.prisma.product.findFirst({
+      where: { id: productId, deletedAt: null },
+    });
     if (!rootProduct) {
       throw new NotFoundException(`Ürün ${productId} bulunamadı`);
     }
 
-    const { bomId, children } = await this.buildTreeChildren(productId, new Set([productId]));
+    const { bomId, children } = await this.walk(
+      productId,
+      1,
+      new Set([productId]),
+      new Map(),
+    );
     return {
       productId: rootProduct.id,
       productCode: rootProduct.code,
       productName: rootProduct.name,
       quantity: null,
+      cumulativeQuantity: null,
       bomId,
       children,
     };
   }
 
-  private async buildTreeChildren(
+  // BOM patlatma: `productId`den `quantity` adet üretmek için her seviyedeki bileşenden
+  // ne kadar gerektiğini kökten yaprağa kümülatif çarparak hesaplar (walk() ile aynı
+  // traversal). İki şekilde döner: `tree` (izlenebilirlik için, her düğümde kümülatif
+  // miktar), `lines` (satın alma/üretim planlama için, aynı bileşenin farklı dallardan
+  // gelen miktarları TOPLANMIŞ düz liste — hem ham maddeler hem kendi BOM'u olan ara
+  // mamuller, `isLeaf` ile ayırt edilir).
+  async explode(
     productId: string,
+    quantity: number,
+  ): Promise<{ tree: BomTreeNode; lines: BomExplosionLine[] }> {
+    if (quantity <= 0) {
+      throw new BadRequestException('Miktar sıfırdan büyük olmalı');
+    }
+    const rootProduct = await this.prisma.product.findFirst({
+      where: { id: productId, deletedAt: null },
+    });
+    if (!rootProduct) {
+      throw new NotFoundException(`Ürün ${productId} bulunamadı`);
+    }
+
+    const lines = new Map<string, BomExplosionLine>();
+    const { bomId, children } = await this.walk(
+      productId,
+      quantity,
+      new Set([productId]),
+      lines,
+    );
+    if (!bomId) {
+      throw new BadRequestException(
+        `Ürün ${productId} için aktif bir ürün ağacı (BOM) bulunamadı — patlatılacak bir şey yok`,
+      );
+    }
+
+    return {
+      tree: {
+        productId: rootProduct.id,
+        productCode: rootProduct.code,
+        productName: rootProduct.name,
+        quantity: null,
+        cumulativeQuantity: quantity,
+        bomId,
+        children,
+      },
+      lines: [...lines.values()].sort((a, b) =>
+        a.productCode.localeCompare(b.productCode),
+      ),
+    };
+  }
+
+  // Belirli bir BOM'u (id ile, aktivasyon durumundan BAĞIMSIZ) kök alarak patlatır. explode()'dan
+  // farkı: explode() ürünün O AN aktif BOM'unu kullanır, bu ise ProductionOrder.bomId gibi
+  // oluşturma anında sabitlenmiş, artık aktif olmayabilecek bir reçeteyi de doğru patlatır —
+  // üretim emri tamamlanırken kullanılan reçete, emir açıldıktan sonra biri BOM'u değiştirip
+  // aktive etse bile değişmemeli. İç içe alt seviyelerin kendi sabitlenmiş bir versiyonu
+  // olmadığından (yalnızca ProductionOrder böyle bir alan taşıyor), onlar için hâlâ walk()'ın
+  // "o an aktif" mantığı kullanılır.
+  async explodeForBom(
+    bomId: string,
+    quantity: number,
+  ): Promise<{ tree: BomTreeNode; lines: BomExplosionLine[] }> {
+    if (quantity <= 0) {
+      throw new BadRequestException('Miktar sıfırdan büyük olmalı');
+    }
+    const bom = await this.prisma.billOfMaterial.findUnique({
+      where: { id: bomId },
+      include: { product: true, items: { include: { component: true } } },
+    });
+    if (!bom) {
+      throw new NotFoundException(`Ürün ağacı ${bomId} bulunamadı`);
+    }
+
+    const lines = new Map<string, BomExplosionLine>();
+    const children = await this.walkItems(
+      bom.items,
+      quantity,
+      Number(bom.outputQuantity),
+      new Set([bom.productId]),
+      lines,
+    );
+
+    return {
+      tree: {
+        productId: bom.productId,
+        productCode: bom.product.code,
+        productName: bom.product.name,
+        quantity: null,
+        cumulativeQuantity: quantity,
+        bomId: bom.id,
+        children,
+      },
+      lines: [...lines.values()].sort((a, b) =>
+        a.productCode.localeCompare(b.productCode),
+      ),
+    };
+  }
+
+  // `getTree` ve `explode`'un ortak traversal çekirdeği. `multiplier`, kökten bu düğüme
+  // kadar birikmiş miktardır (getTree için kök = 1, explode için kök = istenen miktar).
+  // Aktif BOM'u productId ile bulur; asıl item-gezme mantığı walkItems()'tadır (explodeForBom
+  // ile paylaşılır).
+  private async walk(
+    productId: string,
+    multiplier: number,
     ancestors: Set<string>,
+    lines: Map<string, BomExplosionLine>,
   ): Promise<{ bomId: string | null; children: BomTreeNode[] }> {
     const bom = await this.prisma.billOfMaterial.findFirst({
       where: { productId, isActive: true },
@@ -171,33 +321,106 @@ export class BillOfMaterialsService {
       return { bomId: null, children: [] };
     }
 
+    const children = await this.walkItems(
+      bom.items,
+      multiplier,
+      Number(bom.outputQuantity),
+      ancestors,
+      lines,
+    );
+    return { bomId: bom.id, children };
+  }
+
+  // Bir BOM'un item listesini bir seviye işler: her item için component quantity,
+  // BOM'un outputQuantity'si BAŞINA tanımlıdır (bkz. schema.prisma) — bu yüzden çarpım
+  // outputQuantity'ye bölünmeli; önceki sürüm bunu atlıyordu ve outputQuantity ≠ 1 olan
+  // reçetelerde yanlış sonuç veriyordu. Alt seviyelere walk() ile (aktif BOM üzerinden)
+  // recurse eder; `lines`'da aynı bileşenin farklı dallardaki miktarları toplanır.
+  private async walkItems(
+    items: {
+      componentProductId: string;
+      quantity: Prisma.Decimal;
+      component: { code: string; name: string };
+    }[],
+    multiplier: number,
+    outputQuantity: number,
+    ancestors: Set<string>,
+    lines: Map<string, BomExplosionLine>,
+  ): Promise<BomTreeNode[]> {
     const children: BomTreeNode[] = [];
-    for (const item of bom.items) {
-      const baseNode = {
+    for (const item of items) {
+      const perUnitQuantity = Number(item.quantity);
+      const cumulativeQuantity =
+        (multiplier * perUnitQuantity) / outputQuantity;
+      const isCycle = ancestors.has(item.componentProductId);
+
+      const { bomId: childBomId, children: grandchildren } = isCycle
+        ? { bomId: null, children: [] }
+        : await this.walk(
+            item.componentProductId,
+            cumulativeQuantity,
+            new Set(ancestors).add(item.componentProductId),
+            lines,
+          );
+
+      children.push({
         productId: item.componentProductId,
         productCode: item.component.code,
         productName: item.component.name,
-        quantity: Number(item.quantity),
-      };
-      if (ancestors.has(item.componentProductId)) {
-        children.push({ ...baseNode, bomId: null, children: [] });
-        continue;
+        quantity: perUnitQuantity,
+        cumulativeQuantity,
+        bomId: childBomId,
+        children: grandchildren,
+      });
+
+      const existingLine = lines.get(item.componentProductId);
+      if (existingLine) {
+        existingLine.quantity += cumulativeQuantity;
+      } else {
+        lines.set(item.componentProductId, {
+          productId: item.componentProductId,
+          productCode: item.component.code,
+          productName: item.component.name,
+          quantity: cumulativeQuantity,
+          isLeaf: childBomId === null,
+        });
       }
-      const { bomId: childBomId, children: grandchildren } = await this.buildTreeChildren(
-        item.componentProductId,
-        new Set(ancestors).add(item.componentProductId),
-      );
-      children.push({ ...baseNode, bomId: childBomId, children: grandchildren });
     }
 
-    return { bomId: bom.id, children };
+    return children;
   }
 
   // Bir ürün, aktif olsun olmasın kendi bileşeni olamaz — bu her zaman geçersiz bir veridir,
   // aktivasyon durumundan bağımsız kontrol edilir (DB'ye gitmez, ucuz).
-  private assertNoSelfReference(productId: string, componentProductIds: string[]) {
+  private assertNoSelfReference(
+    productId: string,
+    componentProductIds: string[],
+  ) {
     if (componentProductIds.includes(productId)) {
       throw new BadRequestException('Bir ürün kendi bileşeni olamaz');
+    }
+  }
+
+  // BARCODE_MANUAL ürünler yalnızca fiziksel barkod taramasıyla depoya girer/çıkar —
+  // hiçbir zaman bir BOM'un çıktısı ya da bileşeni olamaz (bkz. TrackingType enum tanımı,
+  // schema.prisma). Çıktı (header) ve bileşen ürünlerini tek sorguda kontrol eder.
+  private async assertTrackingTypeCompatible(
+    outputProductId: string,
+    componentProductIds: string[],
+  ) {
+    const productIds = [...new Set([outputProductId, ...componentProductIds])];
+    const products = await this.prisma.product.findMany({
+      where: { id: { in: productIds } },
+      select: { code: true, trackingType: true },
+    });
+    const barcodeManual = products.filter(
+      (p) => p.trackingType === 'BARCODE_MANUAL',
+    );
+    if (barcodeManual.length > 0) {
+      const codes = barcodeManual.map((p) => p.code).join(', ');
+      throw new BadRequestException(
+        `BARCODE_MANUAL ürünler bir ürün ağacında (BOM) çıktı veya bileşen olamaz: ${codes}`,
+      );
     }
   }
 
@@ -207,7 +430,11 @@ export class BillOfMaterialsService {
   // çağıranın transaction'ı içinde (Serializable izolasyonla) çalışır: kontrol ile o BOM'u
   // aktif yapan yazma arasına başka bir isteğin girip görünmeyen bir döngü commit etmesi,
   // Postgres'in serileştirme çakışması hatasıyla engellenir.
-  private async assertNoCycle(tx: Prisma.TransactionClient, productId: string, componentProductIds: string[]) {
+  private async assertNoCycle(
+    tx: Prisma.TransactionClient,
+    productId: string,
+    componentProductIds: string[],
+  ) {
     const visited = new Set<string>();
     const queue = [...componentProductIds];
     while (queue.length > 0) {

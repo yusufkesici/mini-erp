@@ -1,4 +1,4 @@
-import type { ProductType, UnitOfMeasure } from './enums';
+import type { ProductType, TrackingType, UnitOfMeasure } from './enums';
 
 export interface Product {
   id: string;
@@ -8,6 +8,7 @@ export interface Product {
   description: string | null;
   type: ProductType;
   unit: UnitOfMeasure;
+  trackingType: TrackingType;
   costPrice: string | null;
   salePrice: string | null;
   isActive: boolean;
@@ -23,6 +24,7 @@ export interface CreateProductInput {
   description?: string;
   type: ProductType;
   unit?: UnitOfMeasure;
+  trackingType?: TrackingType;
   costPrice?: number;
   salePrice?: number;
   isActive?: boolean;
